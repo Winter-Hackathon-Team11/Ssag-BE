@@ -1,0 +1,152 @@
+import logging
+from pathlib import Path as FSPath
+from typing import Generator, Optional
+
+from fastapi import FastAPI, Depends, HTTPException, status, Path, UploadFile, File
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from sqlalchemy.orm import Session
+from contextlib import asynccontextmanager
+
+from db.database import engine, SessionLocal
+from models.analysis import Base, AnalysisResult
+
+from services.gemini import analyze_trash_image, generate_recruitment_content
+
+from schemas.recruitment import RecruitmentRequest, RecruitmentResponse
+
+from utils.model_loader import ensure_model_exists
+
+from api.analysis import router as analysis
+
+ensure_model_exists()
+
+# 로깅 설정
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    Base.metadata.create_all(bind=engine)
+    yield
+
+FSPath("uploads").mkdir(parents=True, exist_ok=True)
+
+app = FastAPI(lifespan=lifespan)
+app.include_router(analysis)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+
+def get_db() -> Generator[Session, None, None]:
+    db = SessionLocal()
+    try:
+        yield db
+    except Exception:
+        db.rollback()
+        raise
+    finally:
+        db.close()
+
+
+@app.get("/")
+async def root():
+    return {"message": "Hello World"}
+
+@app.get("/analysis/{analysis_id}")
+async def get_analysis_detail(
+    analysis_id: int = Path(..., gt=0),
+    db: Session = Depends(get_db)
+):
+    try:
+        result = db.query(AnalysisResult).filter(AnalysisResult.id == analysis_id).first()
+        if not result:
+            raise HTTPException(status_code=404, detail="Analysis not found")
+        
+        date_str = result.created_at.strftime("%Y-%m-%d")
+        return {
+            "analysis_id": result.id,
+            "image_url": f"/uploads/{date_str}/{result.image_name}",
+            "location": result.location,
+            "trash_summary": result.trash_summary or {},
+            "recommended_resources": {
+                "people": result.required_people,
+                "tools": result.tool or {},
+                "estimated_time_min": result.estimated_time_min
+            }
+        }
+    except Exception as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+@app.post("/recruitment/from-analysis/{analysis_id}")
+async def create_recruitment(
+    analysis_id: int = Path(..., gt=0),
+    request: Optional[RecruitmentRequest] = None, 
+    db: Session = Depends(get_db)
+):
+    try:
+        analysis = db.query(AnalysisResult).filter(AnalysisResult.id == analysis_id).first()
+        if not analysis:
+            raise HTTPException(status_code=404, detail="Analysis not found")
+
+        if not request:
+            raise HTTPException(status_code=400, detail="Request body is missing")
+
+        analysis_data_for_ai = {
+            "location": analysis.location or "해당 구역",
+            "trash_summary": analysis.trash_summary or {},
+            "required_people": analysis.required_people or 5,
+            "estimated_time_min": analysis.estimated_time_min or 60
+        }
+        
+        generated_blog = generate_recruitment_content(analysis_data_for_ai, request.model_dump())
+        logger.info(f"자원봉사 모집글 생성 성공: 분석 ID={analysis_id}")
+
+        location_tag = "모집"
+        if request.meeting_place and request.meeting_place.strip():
+            location_tag = request.meeting_place.split()[0]
+
+        return {
+            "title": f"[{location_tag}] {generated_blog['title']}",
+            "content": generated_blog["content"],
+            "required_people": analysis.required_people,
+            "recommended_tools": analysis.tool,
+            "activity_date": request.activity_date,
+            "meeting_place": request.meeting_place
+        }
+
+    except Exception as e:
+        logger.error(f"모집글 생성 실패: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/analyze", status_code=201)
+async def create_analysis(file: UploadFile = File(...), db: Session = Depends(get_db)):
+    try:
+        image_bytes = await file.read()
+        analysis_data = analyze_trash_image(image_bytes)
+        new_result = AnalysisResult(
+            image_name=file.filename,
+            location=analysis_data.get("location", "알 수 없는 위치"),
+            trash_summary=analysis_data.get("trash_summary"),
+            required_people=analysis_data.get("required_people"),
+            estimated_time_min=analysis_data.get("estimated_time_min"),
+            tool=analysis_data.get("tool")
+        )
+        db.add(new_result)
+        db.commit()
+        db.refresh(new_result)
+        return {"analysis_id": new_result.id}
+    except Exception as e:
+        logger.error(f"분석 실패: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/health")
+async def health_check():
+    return {"status": "healthy"}

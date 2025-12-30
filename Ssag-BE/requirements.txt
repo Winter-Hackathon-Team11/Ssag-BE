@@ -1,0 +1,26 @@
+# --- Web ---
+fastapi
+uvicorn[standard]
+gunicorn
+python-multipart
+python-dotenv
+
+# --- DB ---
+sqlalchemy>=2.0
+pymysql
+cryptography
+
+# --- Validation ---
+pydantic
+
+# --- ML / Vision (CPU ONLY) ---
+ultralytics==8.1.34
+
+torch==1.13.1
+torchvision==0.14.1
+
+pillow
+numpy<2
+
+# --- Google Gemini ---
+google-genai
