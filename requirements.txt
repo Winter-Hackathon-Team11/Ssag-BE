@@ -1,9 +1,23 @@
+# --- Web ---
 fastapi
 uvicorn[standard]
-sqlalchemy
+python-multipart
+python-dotenv
+
+# --- DB ---
+sqlalchemy>=2.0
 pymysql
 cryptography
-python-dotenv
-python-multipart
-google-generativeai
+
+# --- Validation ---
 pydantic
+
+# --- ML / Vision ---
+ultralytics>=8.0.0
+torch
+torchvision
+pillow
+numpy
+
+# --- Google Gemini ---
+google-generativeai
