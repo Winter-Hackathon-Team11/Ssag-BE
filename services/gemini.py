@@ -35,7 +35,7 @@ def generate_recruitment_content(analysis_data: dict, user_request: dict):
         """
 
         response = client.models.generate_content(
-            model="gemini-2.0-flash",
+            model="gemini-2.5-flash",
             contents=prompt
         )
         
