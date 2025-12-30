@@ -14,6 +14,9 @@ import schemas
 # 로깅 설정
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+from db.database import engine
+from models.analysis import Base  # 중요: 모델 import
+from api.analysis import router as analysis_router
 
 
 @asynccontextmanager
@@ -21,7 +24,11 @@ async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
     yield
 
+Path("uploads").mkdir(parents=True, exist_ok=True)
+
 app = FastAPI(lifespan=lifespan)
+app.include_router(analysis_router)
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 app.add_middleware(
     CORSMiddleware,
@@ -65,19 +72,19 @@ async def get_analysis_detail(
         result = db.query(AnalysisResult).filter(
             AnalysisResult.id == analysis_id
         ).first()
-        
+
         if not result:
             logger.warning(f"분석 결과를 찾을 수 없음: ID={analysis_id}")
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Analysis not found"
             )
-        
+
         date_str = result.created_at.strftime("%Y-%m-%d")
         image_url = f"/uploads/{date_str}/{result.image_name}"
-        
+
         logger.info(f"분석 결과 조회 성공: ID={analysis_id}")
-        
+
         return {
             "analysis_id": result.id,
             "image_url": image_url,
@@ -91,7 +98,7 @@ async def get_analysis_detail(
             },
             "created_at": result.created_at.isoformat()
         }
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -115,7 +122,7 @@ async def create_recruitment(
         analysis = db.query(AnalysisResult).filter(
             AnalysisResult.id == analysis_id
         ).first()
-        
+
         if not analysis:
             logger.warning(f"원천 분석 데이터를 찾을 수 없음: ID={analysis_id}")
             raise HTTPException(
@@ -127,7 +134,7 @@ async def create_recruitment(
         if trash_summary:
             trash_names = {
                 "plastic": "플라스틱",
-                "can": "캔", 
+                "can": "캔",
                 "net": "폐그물",
                 "glass": "유리"
             }
@@ -135,13 +142,13 @@ async def create_recruitment(
             trash_text = ", ".join(trash_items)
         else:
             trash_text = "쓰레기"
-        
+
         location = analysis.location or "해당 구역"
         required_people = analysis.required_people or 5
         estimated_time = analysis.estimated_time_min or 80
-        
+
         title = f"[자원봉사 모집] {request.meeting_place.split()[0]} 환경 정화 활동"
-        
+
         content = (
             f"{location}에서 {trash_text} 쓰레기가 다수 발견되었습니다.\n\n"
             f"현재 분석 결과 기준으로 약 {required_people}명의 봉사 인원이 필요하며, "
@@ -149,12 +156,12 @@ async def create_recruitment(
             f"예상 소요 시간은 약 {estimated_time}분이며, "
             f"안전한 환경 정화를 위해 많은 참여 부탁드립니다."
         )
-        
+
         if request.additional_note:
             content += f"\n\n※ {request.additional_note}"
 
         logger.info(f"자원봉사 모집글 생성 성공: 분석 ID={analysis_id}")
-        
+
         return {
             "title": title,
             "content": content,
@@ -163,7 +170,7 @@ async def create_recruitment(
             "activity_date": request.activity_date,
             "meeting_place": request.meeting_place
         }
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -183,9 +190,9 @@ async def create_analysis(
     """
     try:
         image_bytes = await file.read()
-        
+
         analysis_data = analyze_trash_image(image_bytes)
-        
+
         new_result = AnalysisResult(
             image_name=file.filename,
             location=analysis_data.get("location", "알 수 없는 위치"),
@@ -194,14 +201,14 @@ async def create_analysis(
             estimated_time_min=analysis_data.get("estimated_time_min"),
             tool=analysis_data.get("tool")
         )
-        
+
         db.add(new_result)
         db.commit()
         db.refresh(new_result)
-        
+
         logger.info(f"Gemini 분석 및 저장 완료: ID={new_result.id}")
         return {"analysis_id": new_result.id, "message": "Analysis completed successfully"}
-        
+
     except Exception as e:
         logger.error(f"분석 중 오류 발생: {e}")
         raise HTTPException(

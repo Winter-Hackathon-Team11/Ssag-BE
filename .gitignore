@@ -36,3 +36,9 @@ dist/
 
 # OS files
 .DS_Store
+
+uploads/*.jpeg
+uploads/*.jpg
+uploads/*.png
+
+AGENTS.md
