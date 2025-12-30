@@ -46,17 +46,24 @@ async def upload_analysis_image(
 
     # ===== YOLO inference (class_name 기준) =====
     detections = run_yolo(str(stored_path))
-    trash_summary = summarize_detections(detections)
-    print(trash_summary)
+    yolo_trash_summary = summarize_detections(detections)
+    print(yolo_trash_summary)
 
-    recommended_resources = analyze_trash_image_resources(f"uploads/{stored_name}", trash_summary)
+    # ===== Gemini 기반 보정 + 자원 산출 =====
+    analysis_output = analyze_trash_image_resources(
+        f"uploads/{stored_name}",
+        yolo_trash_summary,
+    )
+
+    final_trash_summary = analysis_output["trash_summary"]
+    recommended_resources = analysis_output["recommended_resources"]
 
     analysis_result = create_analysis_result(
         db,
         image_name=annotated_name,
         original_image=stored_name,
         location=location,
-        trash_summary=trash_summary,
+        trash_summary=final_trash_summary,  # 🔥 Gemini 보정 결과 저장
         required_people=recommended_resources["people"],
         estimated_time_min=recommended_resources["estimated_time_min"],
         tool=recommended_resources["tools"],
@@ -66,7 +73,7 @@ async def upload_analysis_image(
     return {
         "analysis_id": analysis_result.id,
         "image_name": annotated_name,
-        "trash_summary": trash_summary,
+        "trash_summary": final_trash_summary,  # 🔥 최종 trash_summary 반환
         "recommended_resources": recommended_resources,
         "created_at": created_at,
     }

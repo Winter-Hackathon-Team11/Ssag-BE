@@ -59,39 +59,55 @@ def generate_recruitment_content(analysis_data: dict, user_request: dict):
 
 def analyze_trash_image_resources(image_path: str, trash_summary: dict[str, int]):
     prompt = f"""
-    You are a decision-support AI for environmental cleanup operations.
+You are a decision-support AI for environmental cleanup operations.
 
-    You are given:
-    1) An on-site image
-    2) A precomputed summary of trash types and counts
+You are given:
+1) An on-site image
+2) A precomputed summary of trash types and counts (trash_summary)
 
-    You MUST use the following trash_summary as the single source of truth.
-    Do NOT infer, modify, or add any trash types or quantities.
+The provided trash_summary is a preliminary result.
+You may use the image to:
+- Translate trash class names into Korean
+- Add additional trash items ONLY if they are clearly visible in the image
+- Adjust counts conservatively if obvious trash was missing
 
-    trash_summary:
-    {json.dumps(trash_summary, ensure_ascii=False)}
+Do NOT remove existing trash types from trash_summary.
+Do NOT invent trash that is not visible in the image.
 
-    Based on this information, calculate the resources required for cleanup.
+Input trash_summary:
+{json.dumps(trash_summary, ensure_ascii=False)}
 
-    You MUST respond in the following JSON format ONLY.
-    Do NOT include explanations, markdown, code blocks, or any extra text.
+Your tasks:
+1) Produce a final trash_summary:
+   - Keys must be Korean trash names
+   - Values must be integer counts
+2) Based on the final trash_summary, calculate recommended cleanup resources
 
-    {{
-        "people": number,
-        "estimated_time_min": number,
-        "tools": {{
-            "tool_name(korean)": number,
-            "tool_name(korean)": number
-        }}
-    }}
+You MUST respond in the following JSON format ONLY.
+Do NOT include explanations, markdown, code blocks, or any extra text.
 
-    Rules:
-    - The field "people" represents "required_people" (the total number of people needed for cleanup).
-    - required_people MUST be returned using the key name "people".
-    - estimated_time_min must be a realistic value based on typical cleanup speed.
-    - The quantity of each tool must be greater than or equal to "people".
-    - Set "cutter" to 1 or more ONLY if "net" exists in trash_summary; otherwise dont include it.
-    """
+{{
+  "trash_summary": {{
+    "쓰레기_이름(한국어)": number,
+    "쓰레기_이름(한국어)": number
+  }},
+  "recommended_resources": {{
+    "people": number,
+    "tools": {{
+      "도구_이름(한국어)": number,
+      "도구_이름(한국어)": number
+    }},
+    "estimated_time_min": number
+  }}
+}}
+
+Rules:
+- The field "people" represents the required number of people for cleanup.
+- The quantity of each tool must be greater than or equal to "people".
+- estimated_time_min must be a realistic value based on typical cleanup speed.
+- Add "cutter" ONLY if fishing nets, ropes, or tangled materials are visible.
+- Be conservative when adding new trash items or increasing counts.
+"""
 
     with open(image_path, "rb") as f:
         image_bytes = f.read()
@@ -109,7 +125,12 @@ def analyze_trash_image_resources(image_path: str, trash_summary: dict[str, int]
         ],
     )
 
-    json_text = response.text.replace('```json', '').replace('```', '').strip()
+    json_text = (
+        response.text
+        .replace("```json", "")
+        .replace("```", "")
+        .strip()
+    )
 
-    print(json.dumps(json_text))
+    print(json_text)
     return json.loads(json_text)
