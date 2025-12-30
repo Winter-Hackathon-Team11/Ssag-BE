@@ -90,7 +90,7 @@ def analyze_trash_image_resources(image_path: str, trash_summary: dict[str, int]
     - required_people MUST be returned using the key name "people".
     - estimated_time_min must be a realistic value based on typical cleanup speed.
     - The quantity of each tool must be greater than or equal to "people".
-    - Set "cutter" to 1 or more ONLY if "net" exists in trash_summary; otherwise set it to 0.
+    - Set "cutter" to 1 or more ONLY if "net" exists in trash_summary; otherwise dont include it.
     """
 
     with open(image_path, "rb") as f:
@@ -110,4 +110,6 @@ def analyze_trash_image_resources(image_path: str, trash_summary: dict[str, int]
     )
 
     json_text = response.text.replace('```json', '').replace('```', '').strip()
+
+    print(json.dumps(json_text))
     return json.loads(json_text)
