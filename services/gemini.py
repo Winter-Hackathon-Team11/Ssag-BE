@@ -80,8 +80,8 @@ def analyze_trash_image_resources(image_path: str, trash_summary: dict[str, int]
         "people": number,
         "estimated_time_min": number,
         "tools": {{
-            "tool_name": number,
-            "tool_name": number
+            "tool_name(korean)": number,
+            "tool_name(korean)": number
         }}
     }}
 
