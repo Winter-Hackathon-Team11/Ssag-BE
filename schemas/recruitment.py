@@ -1,5 +1,6 @@
+from datetime import datetime
 from pydantic import BaseModel
-from typing import Optional, Dict
+from typing import Optional, Dict, List
 
 # 4번 구인글 입력
 class RecruitmentRequest(BaseModel):
@@ -15,3 +16,18 @@ class RecruitmentResponse(BaseModel):
     recommended_tools: Dict[str, int]
     activity_date: str
     meeting_place: str
+
+
+class RecruitmentListItem(BaseModel):
+    id: int
+    title: str
+    location: Optional[str] = None
+    required_people: int
+    estimated_time_min: int
+    activity_date: str
+    status: str
+    created_at: datetime
+
+
+class RecruitmentListResponse(BaseModel):
+    recruitments: List[RecruitmentListItem]

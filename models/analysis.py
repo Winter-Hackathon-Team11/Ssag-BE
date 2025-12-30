@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, JSON, Text
+from sqlalchemy import Column, Integer, String, DateTime, JSON, Text, Enum
 from sqlalchemy.ext.declarative import declarative_base
 from datetime import datetime, timezone
 
@@ -41,9 +41,17 @@ class AnalysisResult(Base):
 
     generated_title = Column(String(255), nullable=True)
     generated_content = Column(Text, nullable=True)
+    activity_date = Column(String(255), nullable=True)
+    meeting_place = Column(String(255), nullable=True)
 
     # 생성 시각
     created_at = Column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc)
+    )
+
+    status = Column(
+        Enum("analyzed", "uploaded", "expired", name="analysis_status"),
+        default="analyzed",
+        nullable=False,
     )

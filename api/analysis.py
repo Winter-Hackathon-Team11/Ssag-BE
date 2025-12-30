@@ -13,7 +13,6 @@ from services.gemini import analyze_trash_image_resources
 from utils.yolo import (
     run_yolo,
     summarize_detections,
-    save_annotated_image,
 )
 
 router = APIRouter(prefix="/analysis", tags=["analysis"])

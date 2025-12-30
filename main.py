@@ -13,7 +13,11 @@ from models.analysis import Base, AnalysisResult
 
 from services.gemini import analyze_trash_image, generate_recruitment_content
 
-from schemas.recruitment import RecruitmentRequest, RecruitmentResponse
+from schemas.recruitment import (
+    RecruitmentListResponse,
+    RecruitmentRequest,
+    RecruitmentResponse,
+)
 
 from utils.model_loader import ensure_model_exists
 
@@ -107,21 +111,24 @@ async def create_recruitment(
         }
         
         generated_blog = generate_recruitment_content(analysis_data_for_ai, request.model_dump())
-        
-        analysis.generated_title = generated_blog['title']
+
+        location_tag = "모집"
+        if request.meeting_place and request.meeting_place.strip():
+            location_tag = request.meeting_place.split()[0]
+        final_title = f"[{location_tag}] {generated_blog['title']}"
+
+        analysis.generated_title = final_title
         analysis.generated_content = generated_blog['content']
+        analysis.activity_date = request.activity_date
+        analysis.meeting_place = request.meeting_place
 
         db.commit()
         db.refresh(analysis)
         
         logger.info(f"모집글 생성 및 DB 저장 성공: 분석 ID={analysis_id}")
 
-        location_tag = "모집"
-        if request.meeting_place and request.meeting_place.strip():
-            location_tag = request.meeting_place.split()[0]
-
         return {
-            "title": f"[{location_tag}] {generated_blog['title']}",
+            "title": final_title,
             "content": generated_blog["content"],
             "required_people": analysis.required_people,
             "recommended_tools": analysis.tool,
@@ -132,6 +139,47 @@ async def create_recruitment(
     except Exception as e:
         logger.error(f"모집글 생성 실패: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/recruitment/{recruitment_id}/publish")
+async def publish_recruitment(
+    recruitment_id: int = Path(..., gt=0),
+    db: Session = Depends(get_db),
+):
+    recruitment = db.query(AnalysisResult).filter(AnalysisResult.id == recruitment_id).first()
+    if not recruitment:
+        raise HTTPException(status_code=404, detail="Recruitment not found")
+
+    recruitment.status = "uploaded"
+    db.commit()
+    db.refresh(recruitment)
+
+    return {"recruitment_id": recruitment.id, "status": recruitment.status}
+
+@app.get("/recruitment", response_model=RecruitmentListResponse)
+async def list_recruitments(
+    status: Optional[str] = None,
+    db: Session = Depends(get_db),
+):
+    query = db.query(AnalysisResult).filter(AnalysisResult.generated_title.isnot(None))
+    if status:
+        query = query.filter(AnalysisResult.status == status)
+
+    results = query.order_by(AnalysisResult.created_at.desc()).all()
+    return {
+        "recruitments": [
+            {
+                "id": item.id,
+                "title": item.generated_title or "",
+                "location": item.location,
+                "required_people": item.required_people,
+                "estimated_time_min": item.estimated_time_min,
+                "activity_date": item.activity_date or "",
+                "status": item.status,
+                "created_at": item.created_at,
+            }
+            for item in results
+        ]
+    }
 
 @app.post("/analyze", status_code=201)
 async def create_analysis(file: UploadFile = File(...), db: Session = Depends(get_db)):
