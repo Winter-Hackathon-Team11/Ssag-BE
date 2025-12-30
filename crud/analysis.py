@@ -10,9 +10,8 @@ def create_analysis_result(
     db: Session,
     *,
     image_name: str,
-    image_path: str,
+    original_image: str,
     location: Optional[str],
-    area_type: Optional[str],
     trash_summary: dict,
     required_people: int,
     estimated_time_min: int,
@@ -21,9 +20,8 @@ def create_analysis_result(
 ) -> AnalysisResult:
     analysis_result = AnalysisResult(
         image_name=image_name,
-        image_path=image_path,
+        original_image=original_image,
         location=location,
-        area_type=area_type,
         trash_summary=trash_summary,
         required_people=required_people,
         estimated_time_min=estimated_time_min,

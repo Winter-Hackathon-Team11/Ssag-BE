@@ -11,6 +11,8 @@ class AnalysisResult(Base):
     # 기본 식별자
     id = Column(Integer, primary_key=True, index=True)
 
+    original_image = Column(String(255), nullable=False)
+
     # 이미지 정보
     image_name = Column(String(255), nullable=False)
 

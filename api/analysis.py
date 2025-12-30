@@ -9,6 +9,11 @@ from sqlalchemy.orm import Session
 from crud.analysis import create_analysis_result
 from db.database import get_db
 from schemas.analysis import AnalysisImageResponse
+from utils.yolo import (
+    run_yolo,
+    summarize_detections,
+    save_annotated_image,
+)
 
 router = APIRouter(prefix="/analysis", tags=["analysis"])
 
@@ -22,36 +27,44 @@ async def upload_analysis_image(
     db: Session = Depends(get_db),
 ):
     created_at = datetime.now(timezone.utc)
-    upload_dir = UPLOAD_DIR
-    upload_dir.mkdir(parents=True, exist_ok=True)
+    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
     original_name = image.filename or "upload"
     extension = Path(original_name).suffix
     stored_name = f"{uuid4().hex}{extension}"
-    stored_path = upload_dir / stored_name
+    stored_path = UPLOAD_DIR / stored_name
 
     with stored_path.open("wb") as buffer:
         while chunk := await image.read(1024 * 1024):
             buffer.write(chunk)
 
-    trash_summary = {"plastic": 14, "can": 6, "net": 1}
+    # ===== YOLO 박스 이미지 저장 =====
+    annotated_name = f"annotated_{stored_name}"
+    annotated_path = UPLOAD_DIR / annotated_name
+    save_annotated_image(str(stored_path), str(annotated_path))
+
+    # ===== YOLO inference (class_name 기준) =====
+    detections = run_yolo(str(stored_path))
+    trash_summary = summarize_detections(detections)
+    print(trash_summary)
+
+    # ===== resource estimation (class_name을 그대로 tools key로 사용) =====
+    total_items = sum(trash_summary.values())
+
     recommended_resources = {
-        "people": 5,
+        "people": max(1, total_items // 5),
         "tools": {
-            "tongs": 5,
-            "bags": 8,
-            "gloves": 5,
-            "cutter": 1,
+            class_name: count
+            for class_name, count in trash_summary.items()
         },
-        "estimated_time_min": 80,
+        "estimated_time_min": total_items * 5,
     }
 
     analysis_result = create_analysis_result(
         db,
-        image_name=original_name,
-        image_path=f"/uploads/{stored_name}",
+        image_name=annotated_name,
+        original_image=stored_name,
         location=location,
-        area_type=None,
         trash_summary=trash_summary,
         required_people=recommended_resources["people"],
         estimated_time_min=recommended_resources["estimated_time_min"],
@@ -61,7 +74,7 @@ async def upload_analysis_image(
 
     return {
         "analysis_id": analysis_result.id,
-        "image_name": original_name,
+        "image_name": annotated_name,
         "trash_summary": trash_summary,
         "recommended_resources": recommended_resources,
         "created_at": created_at,
