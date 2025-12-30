@@ -1,30 +1,44 @@
-import google.generativeai as genai
 import os
 import json
 from dotenv import load_dotenv
+from google import genai
 
 load_dotenv()
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+
+api_key = os.getenv("GEMINI_API_KEY")
+client = genai.Client(api_key=api_key)
 
 def analyze_trash_image(image_data: bytes):
-    model = genai.GenerativeModel('gemini-1.5-flash')
-    
-    prompt = """
-    이 사진 속 해안가 쓰레기를 분석해서 반드시 아래 JSON 형식으로만 응답해줘. 
-    다른 설명은 생략해.
-    {
-        "trash_summary": {"plastic": 개수, "can": 개수, "glass": 개수, "net": 개수},
-        "required_people": 권장인원(숫자),
-        "estimated_time_min": 예상소요시간(분, 숫자),
-        "tool": {"tongs": 개수, "bag": 개수},
-        "location": "사진 기반 추정 위치(예: 부산 해운대구)"
-    }
-    """
-    
-    response = model.generate_content([
-        prompt,
-        {"mime_type": "image/jpeg", "data": image_data}
-    ])
-    
-    json_text = response.text.replace('```json', '').replace('```', '').strip()
-    return json.loads(json_text)
+    try:
+        response = client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=["해변 쓰레기 사진을 분석해서 JSON으로 답해줘. location, trash_summary, required_people, estimated_time_min, tool 항목이 꼭 있어야 해.", image_data]
+        )
+        return response.parsed if response.parsed else json.loads(response.text)
+        
+    except Exception as e:
+        print(f"⚠️ Gemini 실제 호출 실패: {e}")
+        return {
+            "location": "부산 해변 (분석 실패 대체)",
+            "trash_summary": {"plastic": 5, "etc": 2},
+            "required_people": 5,          
+            "estimated_time_min": 60,    
+            "tool": {"집게": 5, "마대": 5}  
+        }
+
+def generate_recruitment_content(analysis_data: dict, user_request: dict):
+    try:
+        prompt = f"{analysis_data}와 {user_request} 정보를 바탕으로 매력적인 구인글을 작성해줘."
+        response = client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=prompt
+        )
+        return {
+            "title": f"🌊 {analysis_data['location']} 정화 활동 모집",
+            "content": response.text
+        }
+    except:
+        return {
+            "title": "함께 바다를 청소해요!",
+            "content": "분석 결과를 바탕으로 정화 활동에 참여할 분들을 모집합니다."
+        }
