@@ -10,6 +10,7 @@ class RecruitmentRequest(BaseModel):
 
 # 4번 구인글 결과 출력
 class RecruitmentResponse(BaseModel):
+    image_name: str
     title: str
     content: str
     required_people: int
@@ -20,6 +21,7 @@ class RecruitmentResponse(BaseModel):
 
 class RecruitmentListItem(BaseModel):
     id: int
+    image_name: str
     title: str
     location: Optional[str] = None
     required_people: int
@@ -35,6 +37,7 @@ class RecruitmentListResponse(BaseModel):
 
 class RecruitmentDetailResponse(BaseModel):
     recruitment_id: int
+    image_name: str
     title: str
     content: str
     required_people: int
