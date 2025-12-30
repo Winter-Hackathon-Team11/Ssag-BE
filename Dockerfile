@@ -4,6 +4,7 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 ENV TORCH_HOME=/app/.cache/torch
 ENV YOLO_CONFIG_DIR=/app/.cache/ultralytics
+ENV MPLCONFIGDIR=/tmp
 
 # system deps (opencv용)
 RUN apt-get update && apt-get install -y \

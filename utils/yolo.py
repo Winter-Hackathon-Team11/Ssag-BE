@@ -2,15 +2,28 @@ from pathlib import Path
 from ultralytics import YOLO
 from PIL import Image
 
+from threading import Lock
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 MODEL_PATH = BASE_DIR / "weights" / "detect_trash.pt"
 
-# 서버 시작 시 1번만 로드
-yolo_model = YOLO(str(MODEL_PATH))
+_model = None
+_lock = Lock()
+
+def get_model():
+    global _model
+    if _model is None:
+        with _lock:  # 동시 요청 방지
+            if _model is None:
+                print("🧠 YOLO model loading...")
+                _model = YOLO("weights/detect_trash.pt")
+                print("✅ YOLO model loaded")
+    return _model
 
 
 def run_yolo(image_path: str, conf: float = 0.25):
-    results = yolo_model.predict(
+    model = get_model()
+    results = model.predict(
         source=image_path,
         conf=conf,
         imgsz=640,
@@ -45,7 +58,8 @@ def save_annotated_image(
     output_path: str,
     conf: float = 0.25,
 ):
-    results = yolo_model.predict(
+    model = get_model()
+    results = model.predict(
         source=image_path,
         conf=conf,
         imgsz=640,
