@@ -15,6 +15,10 @@ from services.gemini import analyze_trash_image, generate_recruitment_content
 
 from schemas.recruitment import RecruitmentRequest, RecruitmentResponse
 
+from utils.model_loader import ensure_model_exists
+
+ensure_model_exists()
+
 # 로깅 설정
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
