@@ -8,7 +8,7 @@ echo "🚀 Container starting..."
 
 if [ ! -f "$MODEL_PATH" ]; then
   echo "⬇️ YOLO model not found. Downloading..."
-  curl -L -o "$MODEL_PATH" "$MODEL_URL"
+  curl -L --progress-bar "$MODEL_URL" -o "$MODEL_PATH"
   echo "✅ Model downloaded"
 else
   echo "✅ Model already exists"
