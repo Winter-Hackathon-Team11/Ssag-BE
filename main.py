@@ -107,7 +107,14 @@ async def create_recruitment(
         }
         
         generated_blog = generate_recruitment_content(analysis_data_for_ai, request.model_dump())
-        logger.info(f"자원봉사 모집글 생성 성공: 분석 ID={analysis_id}")
+        
+        analysis.generated_title = generated_blog['title']
+        analysis.generated_content = generated_blog['content']
+
+        db.commit()
+        db.refresh(analysis)
+        
+        logger.info(f"모집글 생성 및 DB 저장 성공: 분석 ID={analysis_id}")
 
         location_tag = "모집"
         if request.meeting_place and request.meeting_place.strip():

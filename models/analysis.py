@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, JSON
+from sqlalchemy import Column, Integer, String, DateTime, JSON, Text
 from sqlalchemy.ext.declarative import declarative_base
 from datetime import datetime, timezone
 
@@ -38,6 +38,9 @@ class AnalysisResult(Base):
     #   "gloves": 5,    # 보호 장갑
     #   "cutter": 1     # 폐그물·로프 절단용 칼
     # }
+
+    generated_title = Column(String(255), nullable=True)
+    generated_content = Column(Text, nullable=True)
 
     # 생성 시각
     created_at = Column(
