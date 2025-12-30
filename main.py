@@ -17,6 +17,8 @@ from schemas.recruitment import RecruitmentRequest, RecruitmentResponse
 
 from utils.model_loader import ensure_model_exists
 
+from api.analysis import router as analysis
+
 ensure_model_exists()
 
 # 로깅 설정
@@ -31,6 +33,7 @@ async def lifespan(app: FastAPI):
 FSPath("uploads").mkdir(parents=True, exist_ok=True)
 
 app = FastAPI(lifespan=lifespan)
+app.include_router(analysis)
 
 app.add_middleware(
     CORSMiddleware,
