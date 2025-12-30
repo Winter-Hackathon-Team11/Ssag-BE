@@ -130,7 +130,7 @@ async def create_recruitment(
         logger.info(f"모집글 생성 및 DB 저장 성공: 분석 ID={analysis_id}")
 
         return {
-            "image_name": analysis.image_name,
+            "image_name": analysis.original_image,
             "title": final_title,
             "content": generated_blog["content"],
             "required_people": analysis.required_people,
@@ -173,7 +173,7 @@ async def list_recruitments(
         "recruitments": [
             {
                 "id": item.id,
-                "image_name": item.image_name,
+                "image_name": item.original_image,
                 "title": item.generated_title or "",
                 "location": item.location,
                 "required_people": item.required_people,
@@ -200,7 +200,7 @@ async def get_recruitment_detail(
 
     return {
         "recruitment_id": recruitment.id,
-        "image_name": recruitment.image_name,
+        "image_name": recruitment.original_image,
         "title": recruitment.generated_title or "",
         "content": recruitment.generated_content or "",
         "required_people": recruitment.required_people,
