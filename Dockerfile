@@ -19,6 +19,14 @@ COPY requirements.txt .
 RUN pip install --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
+# weights 디렉토리 생성
+RUN mkdir -p weights
+
+# YOLO 모델 다운로드 (빌드 타임)
+RUN curl -L \
+  https://raw.githubusercontent.com/jeremy-rico/litter-detection/master/runs/detect/train/yolov8s_100epochs/weights/best.pt \
+  -o weights/detect_trash.pt
+
 # app source
 COPY . .
 
