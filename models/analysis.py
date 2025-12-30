@@ -43,6 +43,7 @@ class AnalysisResult(Base):
     generated_content = Column(Text, nullable=True)
     activity_date = Column(String(255), nullable=True)
     meeting_place = Column(String(255), nullable=True)
+    published_at = Column(DateTime(timezone=True), nullable=True)
 
     # 생성 시각
     created_at = Column(

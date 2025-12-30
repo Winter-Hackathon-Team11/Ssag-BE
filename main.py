@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime, timezone
 from pathlib import Path as FSPath
 from typing import Generator, Optional
 
@@ -14,6 +15,7 @@ from models.analysis import Base, AnalysisResult
 from services.gemini import analyze_trash_image, generate_recruitment_content
 
 from schemas.recruitment import (
+    RecruitmentDetailResponse,
     RecruitmentListResponse,
     RecruitmentRequest,
     RecruitmentResponse,
@@ -150,6 +152,7 @@ async def publish_recruitment(
         raise HTTPException(status_code=404, detail="Recruitment not found")
 
     recruitment.status = "uploaded"
+    recruitment.published_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(recruitment)
 
@@ -179,6 +182,32 @@ async def list_recruitments(
             }
             for item in results
         ]
+    }
+
+
+@app.get("/recruitment/{recruitment_id}", response_model=RecruitmentDetailResponse)
+async def get_recruitment_detail(
+    recruitment_id: int = Path(..., gt=0),
+    db: Session = Depends(get_db),
+):
+    recruitment = db.query(AnalysisResult).filter(AnalysisResult.id == recruitment_id).first()
+    if not recruitment or not recruitment.generated_title:
+        raise HTTPException(status_code=404, detail="Recruitment not found")
+
+    status_label = "PUBLISHED" if recruitment.status == "uploaded" else recruitment.status.upper()
+
+    return {
+        "recruitment_id": recruitment.id,
+        "title": recruitment.generated_title or "",
+        "content": recruitment.generated_content or "",
+        "required_people": recruitment.required_people,
+        "recommended_tools": recruitment.tool or {},
+        "estimated_time_min": recruitment.estimated_time_min,
+        "activity_date": recruitment.activity_date or "",
+        "meeting_place": recruitment.meeting_place or "",
+        "status": status_label,
+        "created_at": recruitment.created_at,
+        "published_at": recruitment.published_at,
     }
 
 @app.post("/analyze", status_code=201)

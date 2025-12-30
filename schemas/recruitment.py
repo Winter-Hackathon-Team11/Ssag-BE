@@ -31,3 +31,17 @@ class RecruitmentListItem(BaseModel):
 
 class RecruitmentListResponse(BaseModel):
     recruitments: List[RecruitmentListItem]
+
+
+class RecruitmentDetailResponse(BaseModel):
+    recruitment_id: int
+    title: str
+    content: str
+    required_people: int
+    recommended_tools: Dict[str, int]
+    estimated_time_min: int
+    activity_date: str
+    meeting_place: str
+    status: str
+    created_at: datetime
+    published_at: Optional[datetime] = None
