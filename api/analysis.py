@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from crud.analysis import create_analysis_result
 from db.database import get_db
 from schemas.analysis import AnalysisImageResponse
+from services.gemini import analyze_trash_image_resources
 from utils.yolo import (
     run_yolo,
     summarize_detections,
@@ -48,17 +49,7 @@ async def upload_analysis_image(
     trash_summary = summarize_detections(detections)
     print(trash_summary)
 
-    # ===== resource estimation (class_name을 그대로 tools key로 사용) =====
-    total_items = sum(trash_summary.values())
-
-    recommended_resources = {
-        "people": max(1, total_items // 5),
-        "tools": {
-            class_name: count
-            for class_name, count in trash_summary.items()
-        },
-        "estimated_time_min": total_items * 5,
-    }
+    recommended_resources = analyze_trash_image_resources(f"uploads/{stored_name}", trash_summary)
 
     analysis_result = create_analysis_result(
         db,

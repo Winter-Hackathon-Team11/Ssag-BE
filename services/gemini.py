@@ -1,10 +1,10 @@
+from google.genai import types
 import os
 import json
 from dotenv import load_dotenv
 from google import genai
 
 load_dotenv()
-
 api_key = os.getenv("GEMINI_API_KEY")
 client = genai.Client(api_key=api_key)
 
@@ -61,3 +61,58 @@ def generate_recruitment_content(analysis_data: dict, user_request: dict):
             "title": "잠시 후 다시 시도해주세요",
             "content": msg
         }
+
+def analyze_trash_image_resources(image_path: str, trash_summary: dict[str, int]):
+    prompt = f"""
+    You are a decision-support AI for environmental cleanup operations.
+
+    You are given:
+    1) An on-site image
+    2) A precomputed summary of trash types and counts
+
+    You MUST use the following trash_summary as the single source of truth.
+    Do NOT infer, modify, or add any trash types or quantities.
+
+    trash_summary:
+    {json.dumps(trash_summary, ensure_ascii=False)}
+
+    Based on this information, calculate the resources required for cleanup.
+
+    You MUST respond in the following JSON format ONLY.
+    Do NOT include explanations, markdown, code blocks, or any extra text.
+
+    {{
+        "people": number,
+        "estimated_time_min": number,
+        "tools": {{
+            "tool_name": number,
+            "tool_name": number
+        }}
+    }}
+
+    Rules:
+    - The field "people" represents "required_people" (the total number of people needed for cleanup).
+    - required_people MUST be returned using the key name "people".
+    - estimated_time_min must be a realistic value based on typical cleanup speed.
+    - The quantity of each tool must be greater than or equal to "people".
+    - Set "cutter" to 1 or more ONLY if "net" exists in trash_summary; otherwise set it to 0.
+    """
+
+    with open(image_path, "rb") as f:
+        image_bytes = f.read()
+
+    image_part = types.Part.from_bytes(
+        data=image_bytes,
+        mime_type="image/jpeg",
+    )
+
+    response = client.models.generate_content(
+        model="gemini-2.5-flash",
+        contents=[
+            prompt,
+            image_part,
+        ],
+    )
+
+    json_text = response.text.replace('```json', '').replace('```', '').strip()
+    return json.loads(json_text)

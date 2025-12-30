@@ -20,4 +20,4 @@ pillow
 numpy
 
 # --- Google Gemini ---
-google-generativeai
+google-genai
