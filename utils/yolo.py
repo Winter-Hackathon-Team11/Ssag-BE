@@ -21,14 +21,18 @@ def get_model():
     return _model
 
 
-def run_yolo(image_path: str, conf: float = 0.25):
+def run_yolo(image_path: str, output_path: str = None, conf: float = 0.25):
     model = get_model()
     results = model.predict(
         source=image_path,
         conf=conf,
         imgsz=640,
         verbose=False,
+        save=False,
     )[0]
+
+    annotated = results.plot()  # numpy array with boxes
+    Image.fromarray(annotated).save(output_path)
 
     names = results.names  # {class_id: class_name}
 
@@ -51,21 +55,3 @@ def summarize_detections(detections):
         name = d["class_name"]
         summary[name] = summary.get(name, 0) + 1
     return summary
-
-
-def save_annotated_image(
-    image_path: str,
-    output_path: str,
-    conf: float = 0.25,
-):
-    model = get_model()
-    results = model.predict(
-        source=image_path,
-        conf=conf,
-        imgsz=640,
-        verbose=False,
-        save=False,
-    )[0]
-
-    annotated = results.plot()  # numpy array with boxes
-    Image.fromarray(annotated).save(output_path)

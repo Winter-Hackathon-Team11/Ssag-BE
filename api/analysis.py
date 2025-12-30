@@ -42,10 +42,9 @@ async def upload_analysis_image(
     # ===== YOLO 박스 이미지 저장 =====
     annotated_name = f"annotated_{stored_name}"
     annotated_path = UPLOAD_DIR / annotated_name
-    save_annotated_image(str(stored_path), str(annotated_path))
 
     # ===== YOLO inference (class_name 기준) =====
-    detections = run_yolo(str(stored_path))
+    detections = run_yolo(str(stored_path), str(annotated_path))
     yolo_trash_summary = summarize_detections(detections)
     print(yolo_trash_summary)
 
