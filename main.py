@@ -1,4 +1,6 @@
 from fastapi import FastAPI, Depends, HTTPException, status, Path
+from pathlib import Path as FSPath
+from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from contextlib import asynccontextmanager
@@ -9,7 +11,7 @@ import logging
 
 from db.database import engine, SessionLocal
 from models.analysis import Base, AnalysisResult
-import schemas
+from schemas import recruitment as recruitment_schema
 
 # 로깅 설정
 logging.basicConfig(level=logging.INFO)
@@ -24,7 +26,7 @@ async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
     yield
 
-Path("uploads").mkdir(parents=True, exist_ok=True)
+FSPath("uploads").mkdir(parents=True, exist_ok=True)
 
 app = FastAPI(lifespan=lifespan)
 app.include_router(analysis_router)
@@ -112,7 +114,7 @@ async def get_analysis_detail(
 @app.post("/recruitment/from-analysis/{analysis_id}")
 async def create_recruitment(
     analysis_id: int = Path(..., gt=0),
-    request: schemas.RecruitmentRequest = None,
+    request: recruitment_schema.RecruitmentRequest = None,
     db: Session = Depends(get_db)
 ):
     """

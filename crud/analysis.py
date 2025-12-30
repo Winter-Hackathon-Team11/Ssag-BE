@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Optional
 
 from sqlalchemy.orm import Session
 
@@ -10,8 +11,8 @@ def create_analysis_result(
     *,
     image_name: str,
     image_path: str,
-    location: str | None,
-    area_type: str | None,
+    location: Optional[str],
+    area_type: Optional[str],
     trash_summary: dict,
     required_people: int,
     estimated_time_min: int,

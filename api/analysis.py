@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Optional
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, File, Form, UploadFile
@@ -17,7 +18,7 @@ UPLOAD_DIR = Path("uploads")
 @router.post("/image", response_model=AnalysisImageResponse)
 async def upload_analysis_image(
     image: UploadFile = File(...),
-    location: str | None = Form(default=None, max_length=255),
+    location: Optional[str] = Form(default=None, max_length=255),
     db: Session = Depends(get_db),
 ):
     created_at = datetime.now(timezone.utc)

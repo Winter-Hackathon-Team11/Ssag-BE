@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Dict
+from typing import Dict, Optional
 
 from pydantic import BaseModel, Field
 
@@ -15,3 +15,16 @@ class AnalysisImageResponse(BaseModel):
     trash_summary: Dict[str, int] = Field(...)
     recommended_resources: RecommendedResources
     created_at: datetime
+
+class AnalysisDetailResponse(BaseModel):
+    id: int
+    image_name: str
+    location: Optional[str]
+    trash_summary: Dict[str, int]
+    required_people: int
+    estimated_time_min: int
+    tool: Dict[str, int]
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
