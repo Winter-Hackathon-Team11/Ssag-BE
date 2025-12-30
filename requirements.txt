@@ -24,3 +24,6 @@ numpy<2
 
 # --- Google Gemini ---
 google-genai
+
+
+psycopg2-binary
