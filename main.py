@@ -3,6 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from contextlib import asynccontextmanager
 from typing import Generator
+from fastapi import UploadFile, File
+from services.gemini import analyze_trash_image
 import logging
 
 from db.database import engine, SessionLocal
@@ -71,13 +73,11 @@ async def get_analysis_detail(
                 detail="Analysis not found"
             )
         
-        # 이미지 URL 생성
         date_str = result.created_at.strftime("%Y-%m-%d")
         image_url = f"/uploads/{date_str}/{result.image_name}"
         
         logger.info(f"분석 결과 조회 성공: ID={analysis_id}")
         
-        # 명세서 형식 응답
         return {
             "analysis_id": result.id,
             "image_url": image_url,
@@ -173,6 +173,41 @@ async def create_recruitment(
             detail="Analysis not found"
         )
 
+@app.post("/analyze", status_code=status.HTTP_201_CREATED)
+async def create_analysis(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db)
+):
+    """
+    이미지를 업로드하면 Gemini API가 분석하여 결과를 DB에 저장합니다.
+    """
+    try:
+        image_bytes = await file.read()
+        
+        analysis_data = analyze_trash_image(image_bytes)
+        
+        new_result = AnalysisResult(
+            image_name=file.filename,
+            location=analysis_data.get("location", "알 수 없는 위치"),
+            trash_summary=analysis_data.get("trash_summary"),
+            required_people=analysis_data.get("required_people"),
+            estimated_time_min=analysis_data.get("estimated_time_min"),
+            tool=analysis_data.get("tool")
+        )
+        
+        db.add(new_result)
+        db.commit()
+        db.refresh(new_result)
+        
+        logger.info(f"Gemini 분석 및 저장 완료: ID={new_result.id}")
+        return {"analysis_id": new_result.id, "message": "Analysis completed successfully"}
+        
+    except Exception as e:
+        logger.error(f"분석 중 오류 발생: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"AI 분석 실패: {str(e)}"
+        )
 
 @app.get("/health")
 async def health_check():
