@@ -179,6 +179,7 @@ async def list_recruitments(
                 "required_people": item.required_people,
                 "estimated_time_min": item.estimated_time_min,
                 "activity_date": item.activity_date or "",
+                "meeting_place": item.meeting_place or "",
                 "status": item.status,
                 "created_at": item.created_at,
             }

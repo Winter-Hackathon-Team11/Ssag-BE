@@ -27,6 +27,7 @@ class RecruitmentListItem(BaseModel):
     required_people: int
     estimated_time_min: int
     activity_date: str
+    meeting_place: Optional[str] = None
     status: str
     created_at: datetime
 
